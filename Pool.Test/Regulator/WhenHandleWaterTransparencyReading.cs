@@ -32,6 +32,13 @@ namespace Pool.Test.Regulator
             [Fact] public void ThenWaterPumpIsTurnedOn() => Verify<IWaterPump>(pump => pump.TurnOn());
         }
 
+        public class GivenTransparencyIsLowAndWaterPumpIsOn : WhenHandleWaterTransparencyReading
+        {
+            protected override void Given() => (Transparency, WaterPumpIsOn) = (0.7, true);
+
+            [Fact] public void ThenDoNothing() => Verify<IWaterPump>(pump => pump.TurnOn(), Times.Never);
+        }
+
         public class GivenTransparencyGoFromFairToClearFirstTimeInOneHour : WhenHandleWaterTransparencyReading
         {
             protected override void Given() => Transparency = 0.8;
