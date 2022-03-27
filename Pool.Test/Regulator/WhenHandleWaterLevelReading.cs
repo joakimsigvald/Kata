@@ -1,53 +1,41 @@
-﻿using Adlibris.B2L.Test;
-using Moq;
+﻿using Moq;
 using Pool.Services;
 using Xunit;
+using static Pool.Models.Severity;
 
 namespace Pool.Test.Regulator
 {
-    public abstract class WhenCheckWaterLevel : TestSubject<Pool.Regulator, float>
+    public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
     {
         protected double WaterLevel;
-        protected DateTime CurrentTime = DateTime.Now;
-        protected bool WaterTapIsOpen = false;
-        public WhenCheckWaterLevel() => ArrangeAndAct();
-        protected override Pool.Regulator CreateSUT()
-            => new(MockOf<IWaterTap>(), MockOf<IWaterIndicator>(), MockOf<ILogger>(), MockOf<ITime>());
 
-        protected override void Setup()
-        {
-            Mocked<IWaterIndicator>().Setup(indicator => indicator.Level).Returns(WaterLevel);
-            Mocked<IWaterTap>().Setup(tap => tap.IsOpen).Returns(WaterTapIsOpen);
-            Mocked<ITime>().Setup(time => time.Current).Returns(CurrentTime);
-        }
+        protected override void Act() => SUT.HandleWaterLevelReading(WaterLevel);
 
-        protected override void Act() => SUT.CheckWaterLevel();
-
-        public class GivenLevelIsLow : WhenCheckWaterLevel
+        public class GivenLevelIsLow : WhenHandleWaterLevelReading
         {
             protected override void Given() => WaterLevel = -0.5;
             [Fact] public void ThenWaterTapIsOpen() => Verify<IWaterTap>(tap => tap.Open());
         }
 
-        public class GivenLevelIsHighAndTapIsOpen : WhenCheckWaterLevel
+        public class GivenLevelIsHighAndTapIsOpen : WhenHandleWaterLevelReading
         {
             protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0, true);
             [Fact] public void ThenWaterTapIsClosed() => Verify<IWaterTap>(tap => tap.Close());
         }
 
-        public class GivenLevelIsTooHigh : WhenCheckWaterLevel
+        public class GivenLevelIsTooHigh : WhenHandleWaterLevelReading
         {
             protected override void Given() => WaterLevel = 0.31;
-            [Fact] public void ThenLogError() => VerifyLog(Severity.Error, "water level too high");
+            [Fact] public void ThenLogError() => VerifyLog(Error, "water level too high");
         }
 
-        public class GivenLevelIsTooLow : WhenCheckWaterLevel
+        public class GivenLevelIsTooLow : WhenHandleWaterLevelReading
         {
             protected override void Given() => WaterLevel = -1.51;
-            [Fact] public void ThenLogError() => VerifyLog(Severity.Error, "water level too low");
+            [Fact] public void ThenLogError() => VerifyLog(Error, "water level too low");
         }
 
-        public class GivenWaterTapWasRecentlyClosedAndWaterLevelIslow : WhenCheckWaterLevel
+        public class GivenWaterTapWasRecentlyClosedAndWaterLevelIslow : WhenHandleWaterLevelReading
         {
             protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, true);
             [Fact]
@@ -61,7 +49,7 @@ namespace Pool.Test.Regulator
             }
         }
 
-        public class GivenWaterTapWasClosedMoreThanOneHourAgoAndWaterLevelIslow : WhenCheckWaterLevel
+        public class GivenWaterTapWasClosedMoreThanOneHourAgoAndWaterLevelIslow : WhenHandleWaterLevelReading
         {
             protected override void Given() => WaterLevel = 0.1;
 
@@ -76,7 +64,7 @@ namespace Pool.Test.Regulator
             [Fact] public void ThenCloseIt() => Verify<IWaterTap>(tap => tap.Open());
         }
 
-        public class GivenWaterTapHasBeenOpenForMoreThanThreeHours : WhenCheckWaterLevel
+        public class GivenWaterTapHasBeenOpenForMoreThanThreeHours : WhenHandleWaterLevelReading
         {
             protected override void Given() => WaterLevel = -0.6;
 
@@ -90,23 +78,19 @@ namespace Pool.Test.Regulator
 
             [Fact] public void ThenCloseIt() => Verify<IWaterTap>(tap => tap.Close());
 
-            [Fact] public void ThenLogWarning() => VerifyLog(Severity.Warning, "possible leakage");
+            [Fact] public void ThenLogWarning() => VerifyLog(Warning, "possible leakage");
         }
 
-        public class GivenWaterTapIsOpenAndWaterLevelIsLow : WhenCheckWaterLevel
+        public class GivenWaterTapIsOpenAndWaterLevelIsLow : WhenHandleWaterLevelReading
         {
             protected override void Given() => (WaterLevel, WaterTapIsOpen) = (-0.6, true);
             [Fact] public void ThenDoNotOpenIt() => Verify<IWaterTap>(tap => tap.Open(), Times.Never);
         }
 
-        public class GivenWaterTapIsClosedAndWaterLevelIsHigh : WhenCheckWaterLevel
+        public class GivenWaterTapIsClosedAndWaterLevelIsHigh : WhenHandleWaterLevelReading
         {
             protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, false);
             [Fact] public void ThenDoNotCloseIt() => Verify<IWaterTap>(tap => tap.Close(), Times.Never);
         }
-
-        private void VerifyLog(Severity severity, string message)
-            => Verify<ILogger>(logger => logger.Log(severity, It.Is<string>(
-                    msg => msg.ToLower().Contains(message))));
     }
 }

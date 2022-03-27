@@ -1,4 +1,4 @@
 ﻿namespace Pool.Models
 {
-    public enum Command { Nothing, CloseTap, OpenTap }
+    public enum Command { Nothing, CloseTap, OpenTap, LogWaterClear }
 }

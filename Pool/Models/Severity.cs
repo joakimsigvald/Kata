@@ -1,4 +1,4 @@
-﻿namespace Pool.Services
+﻿namespace Pool.Models
 {
     public enum Severity { Normal, Warning, Error }
 }

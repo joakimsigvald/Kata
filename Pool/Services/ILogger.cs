@@ -1,4 +1,6 @@
-﻿namespace Pool.Services
+﻿using Pool.Models;
+
+namespace Pool.Services
 {
     public interface ILogger
     {
