@@ -1,4 +1,4 @@
-﻿namespace Pool
+﻿namespace Pool.Models
 {
     public struct Action
     {

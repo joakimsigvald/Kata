@@ -1,4 +1,4 @@
-﻿namespace Pool
+﻿namespace Pool.Services
 {
     public interface IWaterTap
     {

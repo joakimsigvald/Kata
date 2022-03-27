@@ -1,5 +1,6 @@
 ﻿using Adlibris.B2L.Test;
 using Moq;
+using Pool.Services;
 using Xunit;
 
 namespace Pool.Test.Regulator
@@ -35,19 +36,13 @@ namespace Pool.Test.Regulator
         public class GivenLevelIsTooHigh : WhenCheckWaterLevel
         {
             protected override void Given() => WaterLevel = 0.31;
-            [Fact]
-            public void ThenLogError()
-                => Verify<ILogger>(logger => logger.Error(It.Is<string>(
-                    msg => msg.ToLower().Contains("water level too high"))));
+            [Fact] public void ThenLogError() => VerifyLog(Severity.Error, "water level too high");
         }
 
         public class GivenLevelIsTooLow : WhenCheckWaterLevel
         {
             protected override void Given() => WaterLevel = -1.51;
-            [Fact]
-            public void ThenLogError()
-                => Verify<ILogger>(logger => logger.Error(It.Is<string>(
-                    msg => msg.ToLower().Contains("water level too low"))));
+            [Fact] public void ThenLogError() => VerifyLog(Severity.Error, "water level too low");
         }
 
         public class GivenWaterTapWasRecentlyClosedAndWaterLevelIslow : WhenCheckWaterLevel
@@ -67,15 +62,36 @@ namespace Pool.Test.Regulator
         public class GivenWaterTapWasClosedMoreThanOneHourAgoAndWaterLevelIslow : WhenCheckWaterLevel
         {
             protected override void Given() => WaterLevel = 0.1;
-            [Fact]
-            public void ThenCloseIt()
+
+            public GivenWaterTapWasClosedMoreThanOneHourAgoAndWaterLevelIslow()
             {
                 WaterLevel = -0.6;
                 CurrentTime += TimeSpan.FromMinutes(61);
                 Setup();
                 Act();
-                Verify<IWaterTap>(tap => tap.Open());
             }
+
+            [Fact] public void ThenCloseIt() => Verify<IWaterTap>(tap => tap.Open());
         }
+
+        public class GivenWaterTapHasBeenOpenForMoreThanThreeHours : WhenCheckWaterLevel
+        {
+            protected override void Given() => WaterLevel = -0.6;
+
+            public GivenWaterTapHasBeenOpenForMoreThanThreeHours()
+            {
+                CurrentTime += TimeSpan.FromMinutes(181);
+                Setup();
+                Act();
+            }
+
+            [Fact] public void ThenCloseIt() => Verify<IWaterTap>(tap => tap.Close());
+
+            [Fact] public void ThenLogWarning() => VerifyLog(Severity.Warning, "possible leakage");
+        }
+
+        private void VerifyLog(Severity severity, string message)
+            => Verify<ILogger>(logger => logger.Log(severity, It.Is<string>(
+                    msg => msg.ToLower().Contains(message))));
     }
 }
