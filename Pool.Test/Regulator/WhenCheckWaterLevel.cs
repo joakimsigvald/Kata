@@ -9,6 +9,7 @@ namespace Pool.Test.Regulator
     {
         protected double WaterLevel;
         protected DateTime CurrentTime = DateTime.Now;
+        protected bool WaterTapIsOpen = false;
         public WhenCheckWaterLevel() => ArrangeAndAct();
         protected override Pool.Regulator CreateSUT()
             => new(MockOf<IWaterTap>(), MockOf<IWaterIndicator>(), MockOf<ILogger>(), MockOf<ITime>());
@@ -16,6 +17,7 @@ namespace Pool.Test.Regulator
         protected override void Setup()
         {
             Mocked<IWaterIndicator>().Setup(indicator => indicator.Level).Returns(WaterLevel);
+            Mocked<IWaterTap>().Setup(tap => tap.IsOpen).Returns(WaterTapIsOpen);
             Mocked<ITime>().Setup(time => time.Current).Returns(CurrentTime);
         }
 
@@ -27,9 +29,9 @@ namespace Pool.Test.Regulator
             [Fact] public void ThenWaterTapIsOpen() => Verify<IWaterTap>(tap => tap.Open());
         }
 
-        public class GivenLevelIsHigh : WhenCheckWaterLevel
+        public class GivenLevelIsHighAndTapIsOpen : WhenCheckWaterLevel
         {
-            protected override void Given() => WaterLevel = 0;
+            protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0, true);
             [Fact] public void ThenWaterTapIsClosed() => Verify<IWaterTap>(tap => tap.Close());
         }
 
@@ -47,7 +49,7 @@ namespace Pool.Test.Regulator
 
         public class GivenWaterTapWasRecentlyClosedAndWaterLevelIslow : WhenCheckWaterLevel
         {
-            protected override void Given() => WaterLevel = 0.1;
+            protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, true);
             [Fact]
             public void ThenDoNothing()
             {
@@ -81,6 +83,7 @@ namespace Pool.Test.Regulator
             public GivenWaterTapHasBeenOpenForMoreThanThreeHours()
             {
                 CurrentTime += TimeSpan.FromMinutes(181);
+                WaterTapIsOpen = true;
                 Setup();
                 Act();
             }
@@ -88,6 +91,18 @@ namespace Pool.Test.Regulator
             [Fact] public void ThenCloseIt() => Verify<IWaterTap>(tap => tap.Close());
 
             [Fact] public void ThenLogWarning() => VerifyLog(Severity.Warning, "possible leakage");
+        }
+
+        public class GivenWaterTapIsOpenAndWaterLevelIsLow : WhenCheckWaterLevel
+        {
+            protected override void Given() => (WaterLevel, WaterTapIsOpen) = (-0.6, true);
+            [Fact] public void ThenDoNotOpenIt() => Verify<IWaterTap>(tap => tap.Open(), Times.Never);
+        }
+
+        public class GivenWaterTapIsClosedAndWaterLevelIsHigh : WhenCheckWaterLevel
+        {
+            protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, false);
+            [Fact] public void ThenDoNotCloseIt() => Verify<IWaterTap>(tap => tap.Close(), Times.Never);
         }
 
         private void VerifyLog(Severity severity, string message)

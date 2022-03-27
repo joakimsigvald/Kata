@@ -2,6 +2,8 @@
 {
     public interface IWaterTap
     {
+        bool IsOpen { get; }
+
         void Open();
         void Close();
     }

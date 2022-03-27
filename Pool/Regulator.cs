@@ -23,17 +23,20 @@ namespace Pool
         public void CheckWaterLevel()
         {
             var level = _waterIndicator.Level;
-            if (level > 0.3)
-                _logger.Log(Error, "Water level too high");
-            else if (level < -1.5)
+            if (level < -1.5)
                 _logger.Log(Error, "Water level too low");
             else if (level >= 0)
-                WhenWaterLevelIsHigh();
+                WhenWaterLevelIsHigh(level);
             else if (level <= -0.5)
                 WhenWaterLevelIsLow();
         }
 
-        private void WhenWaterLevelIsHigh() => CloseTap();
+        private void WhenWaterLevelIsHigh(double level)
+        {
+            if (level > 0.3)
+                _logger.Log(Error, "Water level too high");
+            CloseTap();
+        }
 
         private void WhenWaterLevelIsLow()
         {
@@ -41,12 +44,11 @@ namespace Pool
                 return;
             if (TapWasOpenedMoreThanThreeHoursAgo())
             {
-                CloseTap();
                 _logger.Log(Warning, "possible leakage, water tap has been open for more than three hours");
+                CloseTap();
                 return;
             }
-            _waterTap.Open();
-            _actions.Push(new Models.Action { TimeStamp = _time.Current, Command = Command.OpenTap });
+            OpenTap();
         }
 
         private bool TapWasClosedLessThanOneHourAgo()
@@ -62,8 +64,18 @@ namespace Pool
 
         private void CloseTap()
         {
+            if (!_waterTap.IsOpen)
+                return;
             _waterTap.Close();
             _actions.Push(new Models.Action { TimeStamp = _time.Current, Command = Command.CloseTap });
+        }
+
+        private void OpenTap()
+        {
+            if (_waterTap.IsOpen)
+                return;
+            _waterTap.Open();
+            _actions.Push(new Models.Action { TimeStamp = _time.Current, Command = Command.OpenTap });
         }
     }
 }
