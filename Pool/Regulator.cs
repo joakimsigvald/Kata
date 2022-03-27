@@ -33,28 +33,38 @@ namespace Pool
         }
 
         public void HandleWaterTransparencyReading(double transparency)
-        {
-            switch (MapToWaterQuality(transparency))
+            => GetWaterQualityHandler(MapToWaterQuality(transparency))();
+
+        private System.Action GetWaterQualityHandler(WaterQuality quality)
+            => quality switch
             {
-                case Crystal:
-                    if (_waterPump.IsOn)
-                        _waterPump.TurnOff();
-                    break;
-                case Clear:
-                    if (!LoggedWaterClearLastHour())
-                    {
-                        _logger.Log(Normal, "Water quality ok again");
-                        RegisterAction(LogWaterClear);
-                    }
-                    break;
-                case Fair:
-                    return;
-                case Low:
-                    if (!_waterPump.IsOn)
-                        _waterPump.TurnOn();
-                    break;
-                default: throw new NotImplementedException();
-            }
+                Crystal => HandleCrystalWaterQuality,
+                Clear => HandleClearWaterQuality,
+                Fair => HandleClearWaterQuality,
+                Low => HandleLowWaterQuality,
+                _ => () => throw new NotImplementedException()
+            };
+
+        private void HandleCrystalWaterQuality()
+        {
+            if (!_waterPump.IsOn)
+                return;
+            _waterPump.TurnOff();
+        }
+
+        private void HandleLowWaterQuality()
+        {
+            if (_waterPump.IsOn)
+                return;
+            _waterPump.TurnOn();
+        }
+
+        private void HandleClearWaterQuality()
+        {
+            if (LoggedWaterClearLastHour())
+                return;
+            _logger.Log(Normal, "Water quality ok again");
+            RegisterAction(LogWaterClear);
         }
 
         private bool LoggedWaterClearLastHour()
