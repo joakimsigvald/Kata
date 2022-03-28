@@ -12,7 +12,7 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
 
     public class GivenLevelIsLow : WhenHandleWaterLevelReading
     {
-        protected override void Given() => WaterLevel = -0.5;
+        protected override void Given() => WaterLevel = -0.51;
         [Fact] public void ThenOpenWaterTap() => Verify<IWaterTap>(tap => tap.Open());
     }
 
@@ -82,6 +82,7 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
         public GivenWaterTapHasBeenOpenForMoreThanThreeHours()
         {
             WaterTapIsOpen = true;
+            WaterLevel = -0.1;
             CurrentTime += TimeSpan.FromMinutes(181);
             Setup();
             Act();

@@ -8,6 +8,11 @@ namespace Pool
 {
     public class Regulator
     {
+        private const double _bottomLevel = -1;
+        private const double _lowLevel = -0.5;
+        private const double _highLevel = 0;
+        private const double _brinkLevel = 0.3;
+
         private readonly IWaterTap _waterTap;
         private readonly IWaterPump _waterPump;
         private readonly ILogger _logger;
@@ -15,36 +20,48 @@ namespace Pool
         private readonly Stack<Models.Action> _actions = new();
 
         public Regulator(IWaterTap waterTap, IWaterPump waterPump, ILogger logger, ITime time)
-        {
-            _waterTap = waterTap;
-            _waterPump = waterPump;
-            _logger = logger;
-            _time = time;
-        }
+            => (_waterTap, _waterPump, _logger, _time) = (waterTap, waterPump, logger, time);
 
         public void HandleWaterLevelReading(double level)
         {
-            if (level < -1)
+            if (level < _bottomLevel)
                 _logger.Log(Error, "The pool is empty!!");
-            else if (level >= 0)
+            else if (level >= _highLevel)
                 WhenWaterLevelIsHigh(level);
-            else if (level <= -0.5)
-                WhenWaterLevelIsLow();
+            else if (TapHasBeenOpenMoreThanThreeHoursStraight())
+                WhenPossibleLeakage();
+            else if (TimeToFill(level))
+                OpenTap();
         }
 
         public void HandleWaterTransparencyReading(double transparency)
-            => GetWaterQualityHandler(MapToWaterQuality(transparency))();
+        {
+            var quality = MapToWaterQuality(transparency);
+            if (quality == Crystal)
+                TurnOffPump();
+            else if (quality == Clear)
+                WhenWaterIsClear();
+            else if (quality < Fair)
+                WhenWaterIsLessThanFair(quality);
+        }
 
-        private System.Action GetWaterQualityHandler(WaterQuality quality)
-            => quality switch
-            {
-                Crystal => TurnOffPump,
-                Clear => HandleClearWaterQuality,
-                WaterQuality it when it < Fair => () => HandleLowWaterQuality(quality),
-                _ => () => { }
-            };
+        private bool TimeToFill(double level) => level < _lowLevel && !TapWasClosedLessThanOneHourAgo();
 
-        private void HandleLowWaterQuality(WaterQuality quality)
+        private void WhenPossibleLeakage()
+        {
+            _logger.Log(Warning, "possible leakage, water tap has been open for more than three hours");
+            CloseTap();
+        }
+
+        private void WhenWaterIsClear()
+        {
+            if (LoggedWaterClearLastHour())
+                return;
+            _logger.Log(Normal, "The water is clear again.");
+            RegisterAction(LogWaterClear);
+        }
+
+        private void WhenWaterIsLessThanFair(WaterQuality quality)
         {
             if (quality == Poor)
                 _logger.Log(Warning, "The water is muddy!");
@@ -54,14 +71,6 @@ namespace Pool
                 TurnOnPump();
             else if (PumpHasBeenOnMoreThanTwoHoursStraight())
                 TurnOffPump();
-        }
-
-        private void HandleClearWaterQuality()
-        {
-            if (LoggedWaterClearLastHour())
-                return;
-            _logger.Log(Normal, "The water is clear again.");
-            RegisterAction(LogWaterClear);
         }
 
         private bool LoggedWaterClearLastHour()
@@ -77,41 +86,26 @@ namespace Pool
 
         private void WhenWaterLevelIsHigh(double level)
         {
-            if (level > 0.3)
+            if (level > _brinkLevel)
                 _logger.Log(Warning, "The pool is overflowing!");
             CloseTap();
-        }
-
-        private void WhenWaterLevelIsLow()
-        {
-            if (TapWasClosedLessThanOneHourAgo())
-                return;
-            if (TapHasBeenOpenMoreThanThreeHoursStraight())
-            {
-                _logger.Log(Warning, "possible leakage, water tap has been open for more than three hours");
-                CloseTap();
-                return;
-            }
-            OpenTap();
         }
 
         private bool TapWasClosedLessThanOneHourAgo()
             => _actions.Any(action => action.Command == TapClose && action.TimeStamp > _time.Current.AddHours(-1));
 
         private bool TapHasBeenOpenMoreThanThreeHoursStraight()
-        {
-            var lastOpened = _actions
-                .TakeWhile(action => action.Command != TapClose)
-                .FirstOrDefault(action => action.Command == TapOpen);
-            return lastOpened.Command != default && lastOpened.TimeStamp < _time.Current.AddHours(-3);
-        }
+            => HasBeenActiveAtLeast(TapOpen, TapClose, TimeSpan.FromHours(3));
 
         private bool PumpHasBeenOnMoreThanTwoHoursStraight()
+            => HasBeenActiveAtLeast(PumpOn, PumpOff, TimeSpan.FromHours(2));
+
+        private bool HasBeenActiveAtLeast(Command activate, Command deactivate, TimeSpan period)
         {
-            var lastOn = _actions
-                .TakeWhile(action => action.Command != PumpOff)
-                .FirstOrDefault(action => action.Command == PumpOn);
-            return lastOn.Command != default && lastOn.TimeStamp < _time.Current.AddHours(-2);
+            var lastActivation = _actions
+                .TakeWhile(action => action.Command != deactivate)
+                .FirstOrDefault(action => action.Command == activate);
+            return lastActivation.Command != default && _time.Current > lastActivation.TimeStamp + period;
         }
 
         private void CloseTap()
