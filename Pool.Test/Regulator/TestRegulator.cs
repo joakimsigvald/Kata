@@ -1,4 +1,4 @@
-﻿using Adlibris.B2L.Test;
+﻿using Applique.WhenGivenThen.Core;
 using Moq;
 using Pool.Models;
 using Pool.Services;
@@ -23,8 +23,8 @@ namespace Pool.Test.Regulator
             Mocked<ITime>().Setup(time => time.Current).Returns(CurrentTime);
         }
 
-        protected void VerifyLog(Severity severity, string message)
+        protected void VerifyLog(Severity severity, string message, Times times = default)
             => Verify<ILogger>(logger => logger.Log(severity, It.Is<string>(
-                    msg => msg.ToLower().Contains(message))));
+                    msg => msg.ToLower().Contains(message))), times);
     }
 }

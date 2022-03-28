@@ -24,8 +24,8 @@ namespace Pool
 
         public void HandleWaterLevelReading(double level)
         {
-            if (level < -1.5)
-                _logger.Log(Error, "Water level too low");
+            if (level < -1)
+                _logger.Log(Error, "The pool is empty!!");
             else if (level >= 0)
                 WhenWaterLevelIsHigh(level);
             else if (level <= -0.5)
@@ -38,32 +38,29 @@ namespace Pool
         private System.Action GetWaterQualityHandler(WaterQuality quality)
             => quality switch
             {
-                Crystal => HandleCrystalWaterQuality,
+                Crystal => TurnOffPump,
                 Clear => HandleClearWaterQuality,
-                Fair => HandleClearWaterQuality,
-                Low => HandleLowWaterQuality,
-                _ => () => throw new NotImplementedException()
+                WaterQuality it when it < Fair => () => HandleLowWaterQuality(quality),
+                _ => () => { }
             };
 
-        private void HandleCrystalWaterQuality()
+        private void HandleLowWaterQuality(WaterQuality quality)
         {
+            if (quality == Poor)
+                _logger.Log(Warning, "The water is muddy!");
+            else if (quality == Critical)
+                _logger.Log(Error, "The water is very muddy!!");
             if (!_waterPump.IsOn)
-                return;
-            _waterPump.TurnOff();
-        }
-
-        private void HandleLowWaterQuality()
-        {
-            if (_waterPump.IsOn)
-                return;
-            _waterPump.TurnOn();
+                TurnOnPump();
+            else if (PumpHasBeenOnMoreThanTwoHoursStraight())
+                TurnOffPump();
         }
 
         private void HandleClearWaterQuality()
         {
             if (LoggedWaterClearLastHour())
                 return;
-            _logger.Log(Normal, "Water quality ok again");
+            _logger.Log(Normal, "The water is clear again.");
             RegisterAction(LogWaterClear);
         }
 
@@ -81,7 +78,7 @@ namespace Pool
         private void WhenWaterLevelIsHigh(double level)
         {
             if (level > 0.3)
-                _logger.Log(Error, "Water level too high");
+                _logger.Log(Warning, "The pool is overflowing!");
             CloseTap();
         }
 
@@ -89,7 +86,7 @@ namespace Pool
         {
             if (TapWasClosedLessThanOneHourAgo())
                 return;
-            if (TapWasOpenedMoreThanThreeHoursAgo())
+            if (TapHasBeenOpenMoreThanThreeHoursStraight())
             {
                 _logger.Log(Warning, "possible leakage, water tap has been open for more than three hours");
                 CloseTap();
@@ -99,14 +96,22 @@ namespace Pool
         }
 
         private bool TapWasClosedLessThanOneHourAgo()
-            => _actions.Any(action => action.Command == Command.CloseTap && action.TimeStamp > _time.Current.AddHours(-1));
+            => _actions.Any(action => action.Command == TapClose && action.TimeStamp > _time.Current.AddHours(-1));
 
-        private bool TapWasOpenedMoreThanThreeHoursAgo()
+        private bool TapHasBeenOpenMoreThanThreeHoursStraight()
         {
             var lastOpened = _actions
-                    .TakeWhile(action => action.Command != Command.CloseTap)
-                    .FirstOrDefault(action => action.Command == Command.OpenTap);
+                .TakeWhile(action => action.Command != TapClose)
+                .FirstOrDefault(action => action.Command == TapOpen);
             return lastOpened.Command != default && lastOpened.TimeStamp < _time.Current.AddHours(-3);
+        }
+
+        private bool PumpHasBeenOnMoreThanTwoHoursStraight()
+        {
+            var lastOn = _actions
+                .TakeWhile(action => action.Command != PumpOff)
+                .FirstOrDefault(action => action.Command == PumpOn);
+            return lastOn.Command != default && lastOn.TimeStamp < _time.Current.AddHours(-2);
         }
 
         private void CloseTap()
@@ -114,7 +119,7 @@ namespace Pool
             if (!_waterTap.IsOpen)
                 return;
             _waterTap.Close();
-            RegisterAction(Command.CloseTap);
+            RegisterAction(TapClose);
         }
 
         private void OpenTap()
@@ -122,7 +127,23 @@ namespace Pool
             if (_waterTap.IsOpen)
                 return;
             _waterTap.Open();
-            RegisterAction(Command.OpenTap);
+            RegisterAction(TapOpen);
+        }
+
+        private void TurnOffPump()
+        {
+            if (!_waterPump.IsOn)
+                return;
+            _waterPump.TurnOff();
+            RegisterAction(PumpOff);
+        }
+
+        private void TurnOnPump()
+        {
+            if (_waterPump.IsOn)
+                return;
+            _waterPump.TurnOn();
+            RegisterAction(PumpOn);
         }
 
         private void RegisterAction(Command command)
