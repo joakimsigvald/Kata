@@ -1,8 +1,6 @@
-﻿namespace Pool.Models
+﻿namespace Pool.Models;
+public struct Action
 {
-    public struct Action
-    {
-        public DateTime TimeStamp { get; init; }
-        public Command Command { get; init; }
-    }
+    public DateTime TimeStamp { get; init; }
+    public Command Command { get; init; }
 }

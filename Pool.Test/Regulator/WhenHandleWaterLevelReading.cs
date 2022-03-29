@@ -16,7 +16,7 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
         [Fact] public void ThenOpenWaterTap() => Verify<IWaterTap>(tap => tap.Open());
     }
 
-    public class GivenWaterTapIsOpenAndWaterLevelIsLow : WhenHandleWaterLevelReading
+    public class GivenLevelIsLowAndTapIsOpen : WhenHandleWaterLevelReading
     {
         protected override void Given() => (WaterLevel, WaterTapIsOpen) = (-0.6, true);
         [Fact] public void ThenDoNotOpenIt() => Verify<IWaterTap>(tap => tap.Open(), Times.Never);
@@ -28,16 +28,16 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
         [Fact] public void ThenCloseWaterTap() => Verify<IWaterTap>(tap => tap.Close());
     }
 
-    public class GivenWaterTapIsClosedAndWaterLevelIsHigh : WhenHandleWaterLevelReading
+    public class GivenLevelIsHighAndTapIsClosed : WhenHandleWaterLevelReading
     {
-        protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, false);
+        protected override void Given() => WaterLevel = 0.1;
         [Fact] public void ThenDoNotCloseIt() => Verify<IWaterTap>(tap => tap.Close(), Times.Never);
     }
 
     public class GivenLevelIsTooHigh : WhenHandleWaterLevelReading
     {
         protected override void Given() => WaterLevel = 0.31;
-        [Fact] public void ThenLogError() => VerifyLog(Warning, "pool is overflowing");
+        [Fact] public void ThenLogWarning() => VerifyLog(Warning, "pool is overflowing");
     }
 
     public class GivenLevelIsTooLow : WhenHandleWaterLevelReading
@@ -46,26 +46,28 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
         [Fact] public void ThenLogError() => VerifyLog(Error, "pool is empty");
     }
 
-    public class GivenWaterTapWasRecentlyClosedAndWaterLevelIslow : WhenHandleWaterLevelReading
+    public class GivenWaterTapWasRecentlyClosed_And_WaterLevelIslow : WhenHandleWaterLevelReading
     {
-        protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, true);
-        [Fact]
-        public void ThenDoNotOpenIt()
+        protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, true); // Trigger turn off
+
+        public GivenWaterTapWasRecentlyClosed_And_WaterLevelIslow()
         {
             WaterLevel = -0.6;
             CurrentTime += TimeSpan.FromMinutes(59);
             Setup();
             Act();
-            Verify<IWaterTap>(tap => tap.Open(), Times.Never);
         }
+
+        [Fact] public void ThenDoNotOpenIt() => Verify<IWaterTap>(tap => tap.Open(), Times.Never);
     }
 
-    public class GivenWaterTapWasClosedMoreThanOneHourAgoAndWaterLevelIslow : WhenHandleWaterLevelReading
+    public class GivenWaterTapHasBeenOffForAWhile_And_WaterLevelIslow : WhenHandleWaterLevelReading
     {
-        protected override void Given() => WaterLevel = 0.1;
+        protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, true); // Trigger turn off
 
-        public GivenWaterTapWasClosedMoreThanOneHourAgoAndWaterLevelIslow()
+        public GivenWaterTapHasBeenOffForAWhile_And_WaterLevelIslow()
         {
+            WaterTapIsOpen = false;
             WaterLevel = -0.6;
             CurrentTime += TimeSpan.FromMinutes(61);
             Setup();
@@ -75,14 +77,13 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
         [Fact] public void ThenOpenIt() => Verify<IWaterTap>(tap => tap.Open());
     }
 
-    public class GivenWaterTapHasBeenOpenForMoreThanThreeHours : WhenHandleWaterLevelReading
+    public class GivenWaterTapHasBeenOpenTooLong : WhenHandleWaterLevelReading
     {
         protected override void Given() => WaterLevel = -0.6;
 
-        public GivenWaterTapHasBeenOpenForMoreThanThreeHours()
+        public GivenWaterTapHasBeenOpenTooLong()
         {
             WaterTapIsOpen = true;
-            WaterLevel = -0.1;
             CurrentTime += TimeSpan.FromMinutes(181);
             Setup();
             Act();

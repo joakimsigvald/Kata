@@ -1,9 +1,7 @@
 ﻿using Pool.Models;
 
-namespace Pool.Services
+namespace Pool.Services;
+public interface ILogger
 {
-    public interface ILogger
-    {
-        void Log(Severity severity, string msg);
-    }
+    void Log(Severity severity, string msg);
 }

@@ -1,10 +1,8 @@
-﻿namespace Pool.Services
+﻿namespace Pool.Services;
+public interface IWaterTap
 {
-    public interface IWaterTap
-    {
-        bool IsOpen { get; }
+    bool IsOpen { get; }
 
-        void Open();
-        void Close();
-    }
+    void Open();
+    void Close();
 }

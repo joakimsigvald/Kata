@@ -1,7 +1,5 @@
-﻿namespace Pool.Services
+﻿namespace Pool.Services;
+public interface ITime
 {
-    public interface ITime
-    {
-        DateTime Current { get; }
-    }
+    DateTime Current { get; }
 }

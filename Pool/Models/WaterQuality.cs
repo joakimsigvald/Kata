@@ -1,4 +1,2 @@
-﻿namespace Pool.Models
-{
-    public enum WaterQuality { Critical, Poor, Low, Fair, Clear, Crystal }
-}
+﻿namespace Pool.Models;
+public enum WaterQuality { Critical, Poor, Low, Fair, Clear, Crystal }

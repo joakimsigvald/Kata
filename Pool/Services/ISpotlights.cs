@@ -1,7 +1,7 @@
 ﻿namespace Pool.Services;
-public interface IWaterPump
+public interface ISpotlights
 {
     bool IsOn { get; }
-    void TurnOff();
     void TurnOn();
+    void TurnOff();
 }
