@@ -14,7 +14,13 @@ public abstract class TestRegulator<TResult> : TestSubject<Pool.Regulator, TResu
     public TestRegulator() => ArrangeAndAct();
 
     protected override Pool.Regulator CreateSUT()
-        => new(MockOf<IWaterTap>(), MockOf<IWaterPump>(), MockOf<ISpotlights>(), MockOf<ILogger>(), MockOf<ITime>());
+    {
+        var actions = new ActionRecord(MockOf<ITime>());
+        var tap = new WaterTapRegulator(MockOf<IWaterTap>(), MockOf<ILogger>(), actions);
+        var pump = new WaterPumpRegulator(MockOf<IWaterPump>(), MockOf<ILogger>(), actions);
+        var spots = new SpotlightsRegulator(MockOf<ISpotlights>());
+        return new Pool.Regulator(tap, pump, spots);
+    }
 
     protected override void Setup()
     {
