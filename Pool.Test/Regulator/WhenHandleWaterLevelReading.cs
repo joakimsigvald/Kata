@@ -50,13 +50,7 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
     {
         protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, true); // Trigger turn off
 
-        public GivenWaterTapWasRecentlyClosed_And_WaterLevelIslow()
-        {
-            WaterLevel = -0.6;
-            CurrentTime += TimeSpan.FromMinutes(59);
-            Setup();
-            Act();
-        }
+        public GivenWaterTapWasRecentlyClosed_And_WaterLevelIslow() => ActAgain(59, false, -0.6);
 
         [Fact] public void ThenDoNotOpenIt() => Verify<IWaterTap>(tap => tap.Open(), Times.Never);
     }
@@ -65,32 +59,26 @@ public abstract class WhenHandleWaterLevelReading : TestRegulator<float>
     {
         protected override void Given() => (WaterLevel, WaterTapIsOpen) = (0.1, true); // Trigger turn off
 
-        public GivenWaterTapHasBeenOffForAWhile_And_WaterLevelIslow()
-        {
-            WaterTapIsOpen = false;
-            WaterLevel = -0.6;
-            CurrentTime += TimeSpan.FromMinutes(61);
-            Setup();
-            Act();
-        }
+        public GivenWaterTapHasBeenOffForAWhile_And_WaterLevelIslow() => ActAgain(61, false, -0.6);
 
         [Fact] public void ThenOpenIt() => Verify<IWaterTap>(tap => tap.Open());
     }
 
     public class GivenWaterTapHasBeenOpenTooLong : WhenHandleWaterLevelReading
     {
-        protected override void Given() => WaterLevel = -0.6;
+        protected override void Given() => WaterLevel = -0.6; // Trigger turn on
 
-        public GivenWaterTapHasBeenOpenTooLong()
-        {
-            WaterTapIsOpen = true;
-            CurrentTime += TimeSpan.FromMinutes(181);
-            Setup();
-            Act();
-        }
+        public GivenWaterTapHasBeenOpenTooLong() => ActAgain(181, true);
 
         [Fact] public void ThenCloseIt() => Verify<IWaterTap>(tap => tap.Close());
 
         [Fact] public void ThenLogWarning() => VerifyLog(Warning, "possible leakage");
+    }
+
+    private void ActAgain(int inMinutes, bool tapIsOpen, double? level = null)
+    {
+        WaterTapIsOpen = tapIsOpen;
+        WaterLevel = level ?? WaterLevel;
+        ActAgain(inMinutes);
     }
 }

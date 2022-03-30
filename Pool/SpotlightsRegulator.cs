@@ -13,16 +13,13 @@ public class SpotlightsRegulator
     {
         switch (MapToLightCondition(lightLevel)) {
             case PitchBlack:
+            case Bright:
                 if (_spotlights.IsOn)
                     _spotlights.TurnOff();
                 break;
             case Dim:
                 if (!_spotlights.IsOn)
                     _spotlights.TurnOn();
-                break;
-            case Bright:
-                if (_spotlights.IsOn)
-                    _spotlights.TurnOff();
                 break;
         }
     }

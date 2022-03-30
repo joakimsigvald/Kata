@@ -33,4 +33,11 @@ public abstract class TestRegulator<TResult> : TestSubject<Pool.Regulator, TResu
     protected void VerifyLog(Severity severity, string message, Times times = default)
         => Verify<ILogger>(logger => logger.Log(severity, It.Is<string>(
                 msg => msg.ToLower().Contains(message))), times);
+
+    protected void ActAgain(int inMinutes)
+    {
+        CurrentTime += TimeSpan.FromMinutes(inMinutes);
+        Setup();
+        Act();
+    }
 }

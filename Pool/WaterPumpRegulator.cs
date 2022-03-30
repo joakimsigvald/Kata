@@ -17,9 +17,9 @@ public class WaterPumpRegulator
     public void HandleWaterPump(double transparency)
     {
         var quality = MapToWaterQuality(transparency);
-        if (quality == Crystal)
+        if (quality == Crystal || _actions.PumpHasBeenOnMoreThanTwoHoursStraight())
             TurnOffPump();
-        else if (quality == Clear)
+        if (quality == Clear)
             WhenWaterIsClear();
         else if (quality < Fair)
             WhenWaterIsLessThanFair(quality);
@@ -39,10 +39,8 @@ public class WaterPumpRegulator
             _logger.Log(Warning, "The water is muddy!");
         else if (quality == Critical)
             _logger.Log(Error, "The water is very muddy!!");
-        if (!_waterPump.IsOn)
+        if(!_waterPump.IsOn && !_actions.PumpWasClosedLessThanOneHourAgo())
             TurnOnPump();
-        else if (_actions.PumpHasBeenOnMoreThanTwoHoursStraight())
-            TurnOffPump();
     }
 
     private static WaterQuality MapToWaterQuality(double transparency)

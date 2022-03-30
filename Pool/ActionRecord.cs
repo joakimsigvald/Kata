@@ -16,6 +16,9 @@ public class ActionRecord
     public bool TapWasClosedLessThanOneHourAgo()
         => _actions.Any(action => action.Command == TapClose && _time.Current < action.TimeStamp.AddHours(1));
 
+    public bool PumpWasClosedLessThanOneHourAgo()
+        => _actions.Any(action => action.Command == PumpOff && _time.Current < action.TimeStamp.AddHours(1));
+
     public bool TapHasBeenOpenMoreThanThreeHoursStraight()
         => HasBeenActiveAtLeast(TapOpen, TapClose, TimeSpan.FromHours(3));
 
